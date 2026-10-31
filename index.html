@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Sentinel - System Status & Incident Analytics</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            900: '#312e81',
+                        },
+                        dark: {
+                            bg: '#090d16',
+                            card: '#111827',
+                            border: '#1f2937',
+                            hover: '#1e293b'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f3f4f6;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
+
+        /* Glassmorphism subtle effect */
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+    <!-- Header Navigation -->
+    <header class="glass-panel sticky top-0 z-50 border-b border-gray-800 px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                <i data-lucide="activity" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    Cloud Sentinel
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Live Telemetry</span>
+                </h1>
+                <p class="text-xs text-gray-400">Endpoint & Database Status Observatory</p>
+            </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="flex items-center gap-3 flex-wrap">
+            <label class="cursor-pointer flex items-center gap-2 text-xs font-medium bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 border border-gray-700 px-3.5 py-2 rounded-lg transition">
+                <i data-lucide="upload" class="w-4 h-4 text-indigo-400"></i>
+                <span>Load `incident_history.json`</span>
+                <input type="file" id="fileInput" accept=".json" class="hidden">
+            </label>
+            
+            <button id="resetMockBtn" class="flex items-center gap-2 text-xs font-medium bg-gray-800/40 hover:bg-gray-800 text-gray-400 hover:text-gray-200 border border-gray-800 px-3.5 py-2 rounded-lg transition" title="Restore Demo Sample Data">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                <span>Demo Data</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+        <!-- System Overview Banner -->
+        <section id="healthStatusBanner" class="p-4 rounded-xl border flex items-center justify-between gap-4 transition-all glass-panel">
+            <div class="flex items-center gap-3">
+                <div id="statusDot" class="w-3.5 h-3.5 rounded-full animate-pulse bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]"></div>
+                <div>
+                    <h2 id="statusHeadline" class="text-sm font-semibold text-white">System Operational</h2>
+                    <p id="statusSubtext" class="text-xs text-gray-400">All monitored services operating within expected latency standard deviation.</p>
+                </div>
+            </div>
+            <div class="text-xs text-gray-500 font-mono hidden sm:block" id="lastUpdatedText">
+                Synced: --:--:--
+            </div>
+        </section>
+
+        <!-- KPI Metrics Grid -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Metric 1: Uptime % -->
+            <div class="glass-panel p-5 rounded-xl flex flex-col justify-between relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">System Availability</span>
+                    <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <span id="kpiUptime" class="text-3xl font-extrabold tracking-tight text-white">99.2%</span>
+                    <span id="kpiUptimeBadge" class="text-xs font-medium text-emerald-400 flex items-center gap-1">
+                        <i data-lucide="trending-up" class="w-3 h-3"></i> Healthy
+                    </span>
+                </div>
+                <div class="w-full bg-gray-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                    <div id="kpiUptimeBar" class="bg-emerald-500 h-full rounded-full" style="width: 99.2%"></div>
+                </div>
+            </div>
+
+            <!-- Metric 2: Average Latency -->
+            <div class="glass-panel p-5 rounded-xl flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Average Latency</span>
+                    <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+                        <i data-lucide="zap" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <span id="kpiLatency" class="text-3xl font-extrabold tracking-tight text-white">0 ms</span>
+                    <span class="text-xs text-gray-400">p95 Average</span>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-2">Calculated over response telemetry</p>
+            </div>
+
+            <!-- Metric 3: Total Checks Logged -->
+            <div class="glass-panel p-5 rounded-xl flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Check Sequence</span>
+                    <div class="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                        <i data-lucide="layers" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <span id="kpiTotalChecks" class="text-3xl font-extrabold tracking-tight text-white">0</span>
+                    <span class="text-xs text-blue-400 font-medium">Logged Runs</span>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-2">30-min cron cycle evaluation</p>
+            </div>
+
+            <!-- Metric 4: Active Incidents -->
+            <div class="glass-panel p-5 rounded-xl flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Incidents / Warnings</span>
+                    <div id="incidentIconBox" class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <span id="kpiIncidents" class="text-3xl font-extrabold tracking-tight text-white">0</span>
+                    <span id="kpiIncidentSub" class="text-xs text-emerald-400">Zero Critical</span>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-2">Non-200 state events</p>
+            </div>
+        </section>
+
+        <!-- Charts Grid -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Latency Over Time (Line Chart) -->
+            <div class="glass-panel p-5 rounded-xl lg:col-span-2 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                            <i data-lucide="line-chart" class="w-4 h-4 text-indigo-400"></i>
+                            Response Latency Timeline (ms)
+                        </h3>
+                        <p class="text-xs text-gray-400">Historical performance across all probe targets</p>
+                    </div>
+                </div>
+                <div class="h-64 w-full relative">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Status Distribution (Doughnut Chart) -->
+            <div class="glass-panel p-5 rounded-xl flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                            <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-400"></i>
+                            Health State Share
+                        </h3>
+                        <p class="text-xs text-gray-400">Event status breakdown</p>
+                    </div>
+                </div>
+                <div class="h-64 w-full relative flex items-center justify-center">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Incident History Logs Stream Table -->
+        <section class="glass-panel rounded-xl overflow-hidden border border-gray-800">
+            <!-- Table Filter Toolbar -->
+            <div class="p-4 border-b border-gray-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <i data-lucide="list-filter" class="w-4 h-4 text-indigo-400"></i>
+                    <h3 class="text-sm font-semibold text-white">Incident & Audit Stream</h3>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+                    <!-- Search Input -->
+                    <div class="relative flex-1 sm:w-64">
+                        <i data-lucide="search" class="w-4 h-4 text-gray-500 absolute left-3 top-2.5"></i>
+                        <input type="text" id="searchFilter" placeholder="Filter by service name..." class="w-full bg-gray-900/90 border border-gray-700/80 rounded-lg pl-9 pr-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+
+                    <!-- Status Filter -->
+                    <select id="statusFilter" class="bg-gray-900/90 border border-gray-700/80 text-xs text-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500">
+                        <option value="ALL">All Statuses</option>
+                        <option value="UP">UP Only</option>
+                        <option value="WARNING">WARNING Only</option>
+                        <option value="DOWN">DOWN Only</option>
+                    </select>
+
+                    <!-- Type Filter -->
+                    <select id="typeFilter" class="bg-gray-900/90 border border-gray-700/80 text-xs text-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500">
+                        <option value="ALL">All Drivers</option>
+                        <option value="http">HTTP / HTTPS</option>
+                        <option value="postgres">PostgreSQL</option>
+                        <option value="mongodb">MongoDB</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-gray-900/60 text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">
+                        <tr>
+                            <th class="py-3 px-4">Timestamp</th>
+                            <th class="py-3 px-4">Service / Target</th>
+                            <th class="py-3 px-4">Protocol</th>
+                            <th class="py-3 px-4">Status</th>
+                            <th class="py-3 px-4">Telemetry Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody" class="divide-y divide-gray-800/60 text-gray-300">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State Placeholder -->
+            <div id="emptyState" class="hidden p-8 text-center text-gray-500">
+                <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-gray-600"></i>
+                <p class="text-sm font-medium">No incident entries match your criteria</p>
+                <p class="text-xs text-gray-600 mt-1">Try clearing filters or loading a new log file.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800/60 py-6 text-center text-xs text-gray-500">
+        <p>Cloud Endpoint Uptime Monitor • Open Source Executive Ops Dashboard</p>
+    </footer>
+
+    <!-- Application Script -->
+    <script>
+        // Default Mock Data matching incident_history.json format
+        const mockData = [
+            {
+                "timestamp": new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+                "name": "Production Core API",
+                "type": "http",
+                "status": "UP",
+                "details": "✅ Production Core API is UP. Status: 200 | Latency: 42.15ms"
+            },
+            {
+                "timestamp": new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+                "name": "User Authentication DB",
+                "type": "postgres",
+                "status": "UP",
+                "details": "✅ PostgreSQL User Authentication DB is UP. Latency: 12.40ms"
+            },
+            {
+                "timestamp": new Date(Date.now() - 1000 * 60 * 65).toISOString(),
+                "name": "Session Cache Store",
+                "type": "mongodb",
+                "status": "UP",
+                "details": "✅ MongoDB Session Cache Store is UP. Latency: 8.90ms"
+            },
+            {
+                "timestamp": new Date(Date.now() - 1000 * 60 * 95).toISOString(),
+                "name": "Legacy Billing Gateway",
+                "type": "http",
+                "status": "WARNING",
+                "details": "⚠️ SSL Warning: Certificate for Legacy Billing Gateway expires in 12 days (2026-11-12)."
+            },
+            {
+                "timestamp": new Date(Date.now() - 1000 * 60 * 125).toISOString(),
+                "name": "Payment Gateway API",
+                "type": "http",
+                "status": "DOWN",
+                "details": "🚨 Uptime Alert: Payment Gateway API returned status code 503! (Latency: 1200.50ms)"
+            },
+            {
+                "timestamp": new Date(Date.now() - 1000 * 60 * 155).toISOString(),
+                "name": "Production Core API",
+                "type": "http",
+                "status": "UP",
+                "details": "✅ Production Core API is UP. Status: 200 | Latency: 38.80ms"
+            },
+            {
+                "timestamp": new Date(Date.now() - 1000 * 60 * 185).toISOString(),
+                "name": "User Authentication DB",
+                "type": "postgres",
+                "status": "UP",
+                "details": "✅ PostgreSQL User Authentication DB is UP. Latency: 15.10ms"
+            }
+        ];
+
+        let rawIncidents = [...mockData];
+        let latencyChartInstance = null;
+        let statusChartInstance = null;
+
+        // Initialize icons and dashboard on load
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initCharts();
+            renderDashboard(rawIncidents);
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // File upload listener
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const parsed = JSON.parse(event.target.result);
+                        if (Array.isArray(parsed)) {
+                            rawIncidents = parsed;
+                            renderDashboard(rawIncidents);
+                        } else {
+                            alert("Invalid JSON format. Expected an array of incident objects.");
+                        }
+                    } catch (err) {
+                        alert("Error parsing JSON file: " + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            // Reset to Mock Data
+            document.getElementById('resetMockBtn').addEventListener('click', () => {
+                rawIncidents = [...mockData];
+                renderDashboard(rawIncidents);
+            });
+
+            // Filter Event Listeners
+            document.getElementById('searchFilter').addEventListener('input', applyFilters);
+            document.getElementById('statusFilter').addEventListener('change', applyFilters);
+            document.getElementById('typeFilter').addEventListener('change', applyFilters);
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('searchFilter').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            const type = document.getElementById('typeFilter').value;
+
+            const filtered = rawIncidents.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(search) || item.details.toLowerCase().includes(search);
+                const matchesStatus = status === 'ALL' || item.status === status;
+                const matchesType = type === 'ALL' || item.type.toLowerCase() === type.toLowerCase();
+                return matchesSearch && matchesStatus && matchesType;
+            });
+
+            renderTable(filtered);
+        }
+
+        function renderDashboard(data) {
+            updateKPIs(data);
+            updateCharts(data);
+            applyFilters();
+            
+            // Set timestamp
+            document.getElementById('lastUpdatedText').innerText = `Synced: ${new Date().toLocaleTimeString()}`;
+        }
+
+        function updateKPIs(data) {
+            const total = data.length;
+            if (total === 0) {
+                document.getElementById('kpiUptime').innerText = "100%";
+                document.getElementById('kpiLatency').innerText = "0 ms";
+                document.getElementById('kpiTotalChecks').innerText = "0";
+                document.getElementById('kpiIncidents').innerText = "0";
+                return;
+            }
+
+            const upCount = data.filter(d => d.status === 'UP').length;
+            const warningCount = data.filter(d => d.status === 'WARNING').length;
+            const downCount = data.filter(d => d.status === 'DOWN').length;
+
+            const uptimePct = ((upCount / total) * 100).toFixed(1);
+            
+            // Extract latencies using regex
+            let totalLatency = 0;
+            let latencyCount = 0;
+            data.forEach(item => {
+                const match = item.details.match(/Latency:\s*([\d\.]+)ms/i);
+                if (match && match[1]) {
+                    totalLatency += parseFloat(match[1]);
+                    latencyCount++;
+                }
+            });
+            const avgLatency = latencyCount > 0 ? (totalLatency / latencyCount).toFixed(1) : 0;
+
+            // Set UI KPI Values
+            document.getElementById('kpiUptime').innerText = `${uptimePct}%`;
+            document.getElementById('kpiUptimeBar').style.width = `${uptimePct}%`;
+            document.getElementById('kpiLatency').innerText = `${avgLatency} ms`;
+            document.getElementById('kpiTotalChecks').innerText = total;
+            document.getElementById('kpiIncidents').innerText = downCount + warningCount;
+
+            // Banner state
+            const banner = document.getElementById('healthStatusBanner');
+            const statusDot = document.getElementById('statusDot');
+            const headline = document.getElementById('statusHeadline');
+            const subtext = document.getElementById('statusSubtext');
+
+            if (downCount > 0) {
+                statusDot.className = "w-3.5 h-3.5 rounded-full animate-pulse bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]";
+                headline.innerText = "System Experiencing Service Degradation";
+                subtext.innerText = `${downCount} active outage incident(s) detected in history log.`;
+            } else if (warningCount > 0) {
+                statusDot.className = "w-3.5 h-3.5 rounded-full animate-pulse bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]";
+                headline.innerText = "System Warnings Detected";
+                subtext.innerText = `${warningCount} warning alert(s) logged (SSL or performance).`;
+            } else {
+                statusDot.className = "w-3.5 h-3.5 rounded-full animate-pulse bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]";
+                headline.innerText = "All Systems Operational";
+                subtext.innerText = "All monitored services operating within standard health parameters.";
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('logsTableBody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-800/40 transition";
+
+                // Formatted timestamp
+                const dateObj = new Date(item.timestamp);
+                const formattedDate = isNaN(dateObj) ? item.timestamp : dateObj.toLocaleString();
+
+                // Status Badge
+                let statusBadge = '';
+                if (item.status === 'UP') {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>UP</span>`;
+                } else if (item.status === 'WARNING') {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>WARNING</span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-red-500/10 text-red-400 border border-red-500/20"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>DOWN</span>`;
+                }
+
+                // Type Badge
+                let typeBadge = '';
+                const typeLower = item.type.toLowerCase();
+                if (typeLower === 'http') {
+                    typeBadge = `<span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] uppercase font-mono">HTTP</span>`;
+                } else if (typeLower === 'postgres' || typeLower === 'postgresql') {
+                    typeBadge = `<span class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] uppercase font-mono">POSTGRES</span>`;
+                } else if (typeLower === 'mongodb') {
+                    typeBadge = `<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] uppercase font-mono">MONGO</span>`;
+                } else {
+                    typeBadge = `<span class="px-2 py-0.5 rounded bg-gray-500/10 text-gray-400 border border-gray-500/20 text-[10px] uppercase font-mono">${item.type}</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-mono text-gray-400 whitespace-nowrap">${formattedDate}</td>
+                    <td class="py-3 px-4 font-semibold text-white whitespace-nowrap">${item.name}</td>
+                    <td class="py-3 px-4 whitespace-nowrap">${typeBadge}</td>
+                    <td class="py-3 px-4 whitespace-nowrap">${statusBadge}</td>
+                    <td class="py-3 px-4 text-gray-300 font-mono text-[11px] break-words max-w-md">${item.details}</td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function initCharts() {
+            // Chart Defaults for Dark Theme
+            Chart.defaults.color = '#9ca3af';
+            Chart.defaults.font.family = 'Inter';
+
+            // Latency Chart
+            const ctxLatency = document.getElementById('latencyChart').getContext('2d');
+            latencyChartInstance = new Chart(ctxLatency, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Latency (ms)',
+                        data: [],
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#6366f1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            // Status Doughnut Chart
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['UP', 'WARNING', 'DOWN'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 15, font: { size: 11 } }
+                        }
+                    },
+                    cutout: '75%'
+                }
+            });
+        }
+
+        function updateCharts(data) {
+            // Chronological order for line chart
+            const sorted = [...data].reverse();
+
+            const labels = sorted.map(item => {
+                const date = new Date(item.timestamp);
+                return isNaN(date) ? item.timestamp : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            });
+
+            const latencies = sorted.map(item => {
+                const match = item.details.match(/Latency:\s*([\d\.]+)ms/i);
+                return match ? parseFloat(match[1]) : 0;
+            });
+
+            // Update Latency Line Chart
+            latencyChartInstance.data.labels = labels;
+            latencyChartInstance.data.datasets[0].data = latencies;
+            latencyChartInstance.update();
+
+            // Status Distribution Count
+            const upCount = data.filter(d => d.status === 'UP').length;
+            const warningCount = data.filter(d => d.status === 'WARNING').length;
+            const downCount = data.filter(d => d.status === 'DOWN').length;
+
+            statusChartInstance.data.datasets[0].data = [upCount, warningCount, downCount];
+            statusChartInstance.update();
+        }
+    </script>
+</body>
+</html>

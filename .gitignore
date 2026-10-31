@@ -1,0 +1,4 @@
+uptime-monitor/
+__pycache__/
+*.pyc
+.env
