@@ -1,5 +1,26 @@
 [
   {
+    "timestamp": "2026-11-01T08:57:48.856062Z",
+    "name": "GitHub Status Check",
+    "type": "http",
+    "status": "UP",
+    "details": "\u2705 GitHub Status Check is UP. Status: 200 | Latency: 165.19ms"
+  },
+  {
+    "timestamp": "2026-11-01T08:57:48.575752Z",
+    "name": "Simulated Server Outage (Should trigger DOWN Alert)",
+    "type": "http",
+    "status": "UP",
+    "details": "\u2705 Simulated Server Outage (Should trigger DOWN Alert) is UP. Status: 200 | Latency: 181.46ms"
+  },
+  {
+    "timestamp": "2026-11-01T08:57:48.269661Z",
+    "name": "Public API Status (Should be UP)",
+    "type": "http",
+    "status": "UP",
+    "details": "\u2705 Public API Status (Should be UP) is UP. Status: 200 | Latency: 208.40ms"
+  },
+  {
     "timestamp": "2026-11-01T01:56:43.392153Z",
     "name": "GitHub Status Check",
     "type": "http",
