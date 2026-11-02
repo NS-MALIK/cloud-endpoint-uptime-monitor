@@ -10,14 +10,14 @@
   {
     "name": "Simulated Server Outage (Should trigger DOWN Alert)",
     "type": "http",
-    "url": "https://httpbin.org/status/200",
+    "url": "https://httpbin.org/status/500",
     "method": "GET",
     "timeout": 5
   },
   {
     "name": "GitHub Status Check",
     "type": "http",
-    "url": "https://api.github.com",
+    "url": "https://api.github.com/200",
     "method": "GET",
     "timeout": 5
   }
