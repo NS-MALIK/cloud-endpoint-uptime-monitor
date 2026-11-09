@@ -10,7 +10,7 @@
   {
     "name": "Simulated Server Outage (Should trigger DOWN Alert)",
     "type": "http",
-    "url": "https://httpbin.org/status/500",
+    "url": "https://httpbin.org/status/200",
     "method": "GET",
     "timeout": 5
   },
