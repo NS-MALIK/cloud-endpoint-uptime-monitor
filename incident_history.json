@@ -1,5 +1,26 @@
 [
   {
+    "timestamp": "2026-11-12T19:39:11.607427Z",
+    "name": "GitHub Status Check",
+    "type": "http",
+    "status": "DOWN",
+    "details": "\ud83d\udea8 **Uptime Alert**: `GitHub Status Check` returned status code **404**! (Latency: 79.38ms)"
+  },
+  {
+    "timestamp": "2026-11-12T19:39:10.815206Z",
+    "name": "Simulated Server Outage (Should trigger DOWN Alert)",
+    "type": "http",
+    "status": "UP",
+    "details": "\u2705 Simulated Server Outage (Should trigger DOWN Alert) is UP. Status: 200 | Latency: 216.09ms"
+  },
+  {
+    "timestamp": "2026-11-12T19:39:10.456078Z",
+    "name": "Public API Status (Should be UP)",
+    "type": "http",
+    "status": "UP",
+    "details": "\u2705 Public API Status (Should be UP) is UP. Status: 200 | Latency: 208.53ms"
+  },
+  {
     "timestamp": "2026-11-12T11:40:54.609274Z",
     "name": "GitHub Status Check",
     "type": "http",
@@ -677,26 +698,5 @@
     "type": "http",
     "status": "DOWN",
     "details": "\ud83d\udea8 **Uptime Alert**: `GitHub Status Check` returned status code **404**! (Latency: 113.99ms)"
-  },
-  {
-    "timestamp": "2026-11-04T00:07:22.573805Z",
-    "name": "Simulated Server Outage (Should trigger DOWN Alert)",
-    "type": "http",
-    "status": "DOWN",
-    "details": "\ud83d\udea8 **Uptime Alert**: `Simulated Server Outage (Should trigger DOWN Alert)` returned status code **500**! (Latency: 101.71ms)"
-  },
-  {
-    "timestamp": "2026-11-04T00:07:19.319057Z",
-    "name": "Public API Status (Should be UP)",
-    "type": "http",
-    "status": "UP",
-    "details": "\u2705 Public API Status (Should be UP) is UP. Status: 200 | Latency: 140.55ms"
-  },
-  {
-    "timestamp": "2026-11-03T19:12:43.594105Z",
-    "name": "GitHub Status Check",
-    "type": "http",
-    "status": "DOWN",
-    "details": "\ud83d\udea8 **Uptime Alert**: `GitHub Status Check` returned status code **404**! (Latency: 20.59ms)"
   }
 ]
